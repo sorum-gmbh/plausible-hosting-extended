@@ -6,6 +6,16 @@ const port = 3123
 
 app.use(express.json())
 
+function authMiddleware(req, res, next) {
+	if (req.headers['api-key'] === process.env.DATA_CONNECTOR_API_KEY) {
+		next()
+	} else {
+		res.status(401).send(`Unauthorized`)
+	}
+}
+
+app.use(authMiddleware)
+
 const client = createClient({
 	host: 'http://127.0.0.1:8123',
 	username: 'default',
