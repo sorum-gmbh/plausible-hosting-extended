@@ -1,0 +1,9 @@
+{
+	"name": "data-connector",
+	"version": "1.0.0",
+	"author": "sorum GmbH",
+	"dependencies": {
+		"@clickhouse/client": "^0.0.11",
+		"express": "^4.18.2"
+	}
+}

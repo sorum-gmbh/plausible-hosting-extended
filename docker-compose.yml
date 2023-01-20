@@ -1,12 +1,11 @@
-version: "3.3"
+version: '3.3'
 services:
   mail:
     image: bytemark/smtp
     restart: always
 
   plausible_db:
-    # supported versions are 12, 13, and 14
-    image: postgres:14-alpine
+    image: postgres:12
     restart: always
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -20,15 +19,19 @@ services:
       - event-data:/var/lib/clickhouse
       - ./clickhouse/clickhouse-config.xml:/etc/clickhouse-server/config.d/logging.xml:ro
       - ./clickhouse/clickhouse-user-config.xml:/etc/clickhouse-server/users.d/logging.xml:ro
+    expose:
+      - 8123
+    ports:
+      - 127.0.0.1:8123:8123
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
 
   plausible:
-    image: plausible/analytics:latest
+    image: plausible/analytics:1.5.0-rc.0
     restart: always
-    command: sh -c "sleep 10 && /entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+    command: sh -c "sleep 10 && /entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh db init-admin && /entrypoint.sh run"
     depends_on:
       - plausible_db
       - plausible_events_db
@@ -37,6 +40,19 @@ services:
       - 8000:8000
     env_file:
       - plausible-conf.env
+
+  data-connector:
+    container_name: data-connector
+    image: data-connector
+    restart: always
+    depends_on:
+      - plausible_events_db
+    build:
+      context: ./data-connector
+      dockerfile: Dockerfile
+    ports:
+      - 3123:3123
+    network_mode: host
 
 volumes:
   db-data:
