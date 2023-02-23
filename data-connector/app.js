@@ -48,6 +48,16 @@ app.post('/stats', async (req, res) => {
 						return 'name as event_name'
 					case 'entry_page':
 						return 'session_entries.entry_page'
+					case 'utm_medium':
+						return 'session_entries.utm_medium'
+					case 'utm_source':
+						return 'session_entries.utm_source'
+					case 'utm_campaign':
+						return 'session_entries.utm_campaign'
+					case 'utm_term':
+						return 'session_entries.utm_term'
+					case 'utm_content':
+						return 'session_entries.utm_content'
 					case 'date':
 						return 'toString(toYYYYMMDD(timestamp)) as date'
 					default:
@@ -66,6 +76,16 @@ app.post('/stats', async (req, res) => {
 						return 'toString(toYYYYMMDD(timestamp))'
 					case 'entry_page':
 						return 'session_entries.entry_page'
+					case 'utm_medium':
+						return 'session_entries.utm_medium'
+					case 'utm_source':
+						return 'session_entries.utm_source'
+					case 'utm_campaign':
+						return 'session_entries.utm_campaign'
+					case 'utm_term':
+						return 'session_entries.utm_term'
+					case 'utm_content':
+						return 'session_entries.utm_content'
 					default:
 						return field
 				}
@@ -74,9 +94,39 @@ app.post('/stats', async (req, res) => {
 
 		const where = `WHERE domain='${domain}' AND timestamp between '${startDate} 00:00:00' and '${endDate} 23:59:59'`
 
+		const addEntryPageQuery = fields.reduce((a, c) => {
+			if (a) return true
+			if (c.match(/utm|entry_page/)) {
+				return true
+			}
+			return false
+		}, false)
+
+		const entry_page_query_fields = fields
+			.filter(field => field.match(/utm|entry_page/))
+			.map(field => {
+				switch (field) {
+					case 'entry_page':
+						return 'plausible_events_db.events.pathname as entry_page'
+					case 'utm_medium':
+						return 'plausible_events_db.events.utm_medium as utm_medium'
+					case 'utm_source':
+						return 'plausible_events_db.events.utm_source as utm_source'
+					case 'utm_campaign':
+						return 'plausible_events_db.events.utm_campaign as utm_campaign'
+					case 'utm_term':
+						return 'plausible_events_db.events.utm_term as utm_term'
+					case 'utm_content':
+						return 'plausible_events_db.events.utm_content as utm_content'
+					default:
+						return ''
+				}
+			})
+			.join(', ')
+
 		const query = `\
 		${
-			fields.includes('entry_page')
+			addEntryPageQuery
 				? `\
 				WITH session_entries as (
 					WITH session_start AS (
@@ -85,7 +135,7 @@ app.post('/stats', async (req, res) => {
 						${where}
 						GROUP BY session_id
 					)
-					SELECT session_id, session_start, plausible_events_db.events.pathname as entry_page
+					SELECT session_id, session_start, ${entry_page_query_fields}
 					FROM session_start
 					JOIN plausible_events_db.events
 					ON session_start.session_id = plausible_events_db.events.session_id AND session_start.session_start = plausible_events_db.events.timestamp
@@ -96,14 +146,14 @@ app.post('/stats', async (req, res) => {
 		SELECT ${query_fields}
 		FROM plausible_events_db.events
 		${
-			fields.includes('entry_page')
+			addEntryPageQuery
 				? 'JOIN session_entries ON plausible_events_db.events.session_id = session_entries.session_id'
 				: ''
 		}
 		${where}
 		${group_by_fields.length > 0 ? `GROUP BY ${group_by_fields}` : ''}
 		${fields.includes('date') ? 'ORDER BY toString(toYYYYMMDD(timestamp))' : ''}
-	`
+		`
 
 		const result = await client.query({
 			query,
