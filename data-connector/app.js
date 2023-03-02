@@ -58,6 +58,8 @@ app.post('/stats', async (req, res) => {
 						return 'session_entries.utm_term'
 					case 'utm_content':
 						return 'session_entries.utm_content'
+					case 'referrer_source':
+						return 'session_entries.referrer_source'
 					case 'date':
 						return 'toString(toYYYYMMDD(timestamp)) as date'
 					default:
@@ -86,6 +88,8 @@ app.post('/stats', async (req, res) => {
 						return 'session_entries.utm_term'
 					case 'utm_content':
 						return 'session_entries.utm_content'
+					case 'referrer_source':
+						return 'session_entries.referrer_source'
 					default:
 						return field
 				}
@@ -96,14 +100,14 @@ app.post('/stats', async (req, res) => {
 
 		const addEntryPageQuery = fields.reduce((a, c) => {
 			if (a) return true
-			if (c.match(/utm|entry_page/)) {
+			if (c.match(/utm|entry_page|referrer_source/)) {
 				return true
 			}
 			return false
 		}, false)
 
 		const entry_page_query_fields = fields
-			.filter(field => field.match(/utm|entry_page/))
+			.filter(field => field.match(/utm|entry_page|referrer_source/))
 			.map(field => {
 				switch (field) {
 					case 'entry_page':
@@ -118,6 +122,8 @@ app.post('/stats', async (req, res) => {
 						return 'plausible_events_db.events.utm_term as utm_term'
 					case 'utm_content':
 						return 'plausible_events_db.events.utm_content as utm_content'
+					case 'referrer_source':
+						return 'plausible_events_db.events.referrer_source as referrer_source'
 					default:
 						return ''
 				}
@@ -135,7 +141,10 @@ app.post('/stats', async (req, res) => {
 						${where}
 						GROUP BY session_id
 					)
-					SELECT session_id, session_start, ${entry_page_query_fields}
+					SELECT
+						session_id,
+						session_start,
+						${entry_page_query_fields}
 					FROM session_start
 					JOIN plausible_events_db.events
 					ON session_start.session_id = plausible_events_db.events.session_id AND session_start.session_start = plausible_events_db.events.timestamp
